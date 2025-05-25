@@ -1,33 +1,24 @@
-const { Sequelize } = require('sequelize');
-require('dotenv').config();
+const sql = require('mssql');
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mssql',
-    dialectOptions: {
-      options: {
-        encrypt: true, // Para Azure SQL
-        trustServerCertificate: true // Solo para desarrollo local
-      }
-    },
-    logging: false // Desactiva los logs de SQL en producción
-  }
-);
-
-// Función para probar la conexión
-const testConnection = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Conexión a SQL Server establecida correctamente.');
-  } catch (error) {
-    console.error('Error al conectar a SQL Server:', error);
-  }
+const config = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_NAME,
+    options: {
+        encrypt: true,
+        trustServerCertificate: true
+    }
 };
 
-testConnection();
+const poolPromise = new sql.ConnectionPool(config)
+  .connect()
+  .then(pool => {
+    console.log('Conectado a SQL Server');
+    return pool;
+  })
+  .catch(err => console.log('Error en conexión:', err));
 
-module.exports = sequelize;
+module.exports = {
+  sql, poolPromise
+};
