@@ -1,23 +1,23 @@
 const sql = require('mssql');
 
 const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER,
-    database: process.env.DB_NAME,
-    options: {
-        encrypt: true,
-        trustServerCertificate: true
-    }
+  user: 'tu_usuario',
+  password: 'tu_contraseña',
+  server: 'tu_servidor_sql', // Ejemplo: localhost
+  database: 'tu_base_de_datos',
+  options: {
+    encrypt: true,
+    trustServerCertificate: true,
+  },
 };
 
 const poolPromise = new sql.ConnectionPool(config)
   .connect()
   .then(pool => {
-    console.log('Conectado a SQL Server');
+    console.log('Conexión a SQL Server exitosa');
     return pool;
   })
-  .catch(err => console.log('Error en conexión:', err));
+  .catch(err => console.error('Error de conexión a SQL Server', err));
 
 module.exports = {
   sql, poolPromise
