@@ -1,4 +1,4 @@
-const sql = require('./db');
+const sql = require('./database.js');
 
 const registrarUsuario = async (usuario) => {
   const { nombre, correo, contrasenaHash, rolId, departamento, ciudad, sitioId } = usuario;

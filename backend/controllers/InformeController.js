@@ -1,29 +1,54 @@
-const googleDriveService = require('../services/googleDriveService');
+const sql = require('mssql');
+const config = require('../config/database.js');
+const { subirArchivo } = require('../utils/googleDrive');
+const { registrarEnHoja } = require('../utils/googleSheets');
+const fs = require('fs');
+const path = require('path');
 
-exports.create = async (req, res) => {
+exports.enviarInforme = async (req, res) => {
+  const archivo = req.file;
+  const { tipoArchivo, tipoSitio, sitio, usuario } = req.body;
+
+  if (!archivo) return res.status(400).json({ error: 'Archivo no enviado' });
+
   try {
-    const { sitioId, tipoSitio, fecha } = req.body;
-    
-    // 1. Crear el informe en la base de datos
-    const informe = await Informe.create({ sitioId, tipoSitio, fecha });
-    
-    // 2. Subir archivos a Google Drive
-    const archivosSubidos = [];
-    for (const file of req.files.fotos) {
-      const resultado = await googleDriveService.uploadFile(file, process.env.GOOGLE_DRIVE_FOLDER_ID);
-      archivosSubidos.push(resultado);
-    }
-    
-    // 3. Guardar metadata de archivos en la base de datos
-    await Archivo.bulkCreate(archivosSubidos.map(archivo => ({
-      informeId: informe.id,
-      tipo: 'FOTO',
-      nombreArchivo: archivo.name,
-      rutaGoogleDrive: archivo.url
-    })));
+    // Subir a Google Drive
+    const url = await subirArchivo({
+      archivoPath: archivo.path,
+      nombreArchivo: archivo.originalname,
+      sitio,
+      tipoSitio,
+      tipoArchivo,
+    });
 
-    res.status(201).json({ informe, archivos: archivosSubidos });
+    // Registrar en la hoja de cálculo
+    await registrarEnHoja({
+      fecha: new Date().toLocaleString(),
+      nombreArchivo: archivo.originalname,
+      url,
+      sitio,
+      tipoSitio,
+      tipoArchivo,
+      usuario,
+    });
+
+    // Registrar en la BD
+    const pool = await sql.connect(config);
+    await pool.request()
+      .input('nombreArchivo', sql.NVarChar, archivo.originalname)
+      .input('url', sql.NVarChar, url)
+      .input('sitio', sql.NVarChar, sitio)
+      .input('tipoSitio', sql.NVarChar, tipoSitio)
+      .input('tipoArchivo', sql.NVarChar, tipoArchivo)
+      .input('usuario', sql.NVarChar, usuario)
+      .input('fecha', sql.DateTime, new Date())
+      .query(`INSERT INTO Informes (nombreArchivo, url, sitio, tipoSitio, tipoArchivo, usuario, fecha) 
+              VALUES (@nombreArchivo, @url, @sitio, @tipoSitio, @tipoArchivo, @usuario, @fecha)`);
+
+    fs.unlinkSync(archivo.path); // limpiar archivo temporal
+    res.status(200).json({ mensaje: 'Informe enviado con éxito', url });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Error al enviar informe' });
   }
 };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const informeController = require('../controllers/informeController');
-const { verificarToken, restringirRol } = require('../middleware/authMiddleware');
+const { verificarToken, restringirRol } = require('../middleware/authMiddleware.js');
 
 // Crear nuevo informe (solo Operador)
 router.post('/crear', verificarToken, restringirRol([2]), informeController.crearInforme);

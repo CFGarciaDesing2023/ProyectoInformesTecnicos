@@ -1,45 +1,54 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { poolPromise } = require('../config/database.js');
+const sql = require('mssql');
+const config = require('../config/database.js');
+
+const SECRET = process.env.JWT_SECRET || 'secreto_super_seguro';
 
 exports.registrar = async (req, res) => {
-  const { nombre, email, password, rolID, departamento, ciudad, sitio } = req.body;
+  const { nombre, correo, contraseña, rol, departamento, ciudad, sitio } = req.body;
+
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const pool = await poolPromise;
+    const hashedPass = await bcrypt.hash(contraseña, 10);
+    const pool = await sql.connect(config);
     await pool.request()
-      .input('nombre', sql.VarChar, nombre)
-      .input('email', sql.VarChar, email)
-      .input('password', sql.VarChar, hashedPassword)
-      .input('rolID', sql.Int, rolID)
-      .input('departamento', sql.VarChar, departamento)
-      .input('ciudad', sql.VarChar, ciudad)
-      .input('sitio', sql.VarChar, sitio)
-      .query(`INSERT INTO Usuarios (NombreCompleto, Email, PasswordHash, RolID, Departamento, Ciudad, SitioAsignado)
-              VALUES (@nombre, @email, @password, @rolID, @departamento, @ciudad, @sitio)`);
+      .input('nombre', sql.NVarChar, nombre)
+      .input('correo', sql.NVarChar, correo)
+      .input('contraseña', sql.NVarChar, hashedPass)
+      .input('rol', sql.NVarChar, rol)
+      .input('departamento', sql.NVarChar, departamento)
+      .input('ciudad', sql.NVarChar, ciudad)
+      .input('sitio', sql.NVarChar, sitio)
+      .query(`INSERT INTO Usuarios (nombre, correo, contraseña, rol, departamento, ciudad, sitio) VALUES (@nombre, @correo, @contraseña, @rol, @departamento, @ciudad, @sitio)`);
+
     res.status(201).json({ mensaje: 'Usuario registrado correctamente' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al registrar usuario' });
   }
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { correo, contraseña } = req.body;
+
   try {
-    const pool = await poolPromise;
+    const pool = await sql.connect(config);
     const result = await pool.request()
-      .input('email', sql.VarChar, email)
-      .query(`SELECT * FROM Usuarios WHERE Email = @email`);
+      .input('correo', sql.NVarChar, correo)
+      .query(`SELECT * FROM Usuarios WHERE correo = @correo`);
 
     const usuario = result.recordset[0];
-    if (!usuario) return res.status(401).json({ mensaje: 'Usuario no encontrado' });
 
-    const valido = await bcrypt.compare(password, usuario.PasswordHash);
-    if (!valido) return res.status(401).json({ mensaje: 'Contraseña incorrecta' });
+    if (!usuario) return res.status(401).json({ error: 'Correo no registrado' });
 
-    const token = jwt.sign({ id: usuario.UsuarioID, rol: usuario.RolID }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const match = await bcrypt.compare(contraseña, usuario.contraseña);
+    if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
+
+    const token = jwt.sign({ id: usuario.id, rol: usuario.rol }, SECRET, { expiresIn: '8h' });
+
+    res.json({ token, usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error en login' });
   }
 };
