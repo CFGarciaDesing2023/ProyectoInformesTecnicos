@@ -1,10 +1,10 @@
 const sql = require('mssql');
 
 const config = {
-  user: 'tu_usuario',
-  password: 'tu_contraseña',
-  server: 'tu_servidor_sql', // Ejemplo: localhost
-  database: 'tu_base_de_datos',
+  user: 'CFGarciaDesing_SQLLogin_1',
+  password: 'CFgp03131996',
+  server: 'gomdsaszomac.mssql.somee.com', // Ejemplo: localhost
+  database: 'gomdsaszomac',
   options: {
     encrypt: true,
     trustServerCertificate: true,

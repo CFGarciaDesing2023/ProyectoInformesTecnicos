@@ -1,12 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const usuarioController = require('../controllers/usuarioController');
-const { verificarToken, restringirRol } = require('../middleware/authMiddleware.js');
+const {
+  createUsuario,
+  getUsuario,
+  getUsuarioByCorreo,
+  getAllUsuarios,
+  updateUsuario,
+  deleteUsuario
+} = require('../controllers/usuariosController');
 
-// Obtener todos los usuarios (solo para Admin)
-router.get('/', verificarToken, restringirRol([1]), usuarioController.obtenerUsuarios);
-
-// Obtener perfil del usuario autenticado
-router.get('/perfil', verificarToken, usuarioController.obtenerPerfil);
+router.post('/', createUsuario);
+router.get('/:id', getUsuario);
+router.get('/correo/:correo', getUsuarioByCorreo);
+router.get('/', getAllUsuarios);
+router.put('/:id', updateUsuario);
+router.delete('/:id', deleteUsuario);
 
 module.exports = router;
